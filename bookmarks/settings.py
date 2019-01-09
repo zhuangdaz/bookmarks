@@ -38,6 +38,7 @@ ALLOWED_HOSTS = [
 INSTALLED_APPS = [
     'account.apps.AccountConfig',
     'images.apps.ImagesConfig',
+    'actions.apps.ActionsConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -148,6 +149,6 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '319795334541-sch9t1om0iuiuejsadfc8c0e420cfsio.a
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = 'OZPiVfstF3zLzLMKs35W3N2d'  # Google Consumer Secret
 
 ABSOLUTE_URL_OVERRIDES = {
-    'auth.user': lambda u: reverse_lazy('user_detail',
+    'auth.user': lambda u: reverse_lazy('account:user_detail',
                                         args=[u.username])
 }
