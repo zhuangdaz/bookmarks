@@ -1,3 +1,7 @@
+import logging
+
+import redis
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -9,6 +13,12 @@ from actions.utils import create_action
 from common.decorators import ajax_required
 from .forms import ImageCreateForm
 from .models import Image
+
+logger = logging.getLogger(__name__)
+
+r = redis.StrictRedis(host=settings.REDIS_HOST,
+                      port=settings.REDIS_PORT,
+                      db=settings.REDIS_DB)
 
 
 @login_required
@@ -37,10 +47,13 @@ def image_create(request):
 
 def image_detail(request, id, slug):
     image = get_object_or_404(Image, id=id, slug=slug)
+    total_views = r.incr('image:{}:views'.format(image.id))
+    r.zincrby('image_ranking', 1, image.id)
     return render(request,
                   'images/image/detail.html',
                   {'section': 'images',
-                   'image': image})
+                   'image': image,
+                   'total_views': total_views})
 
 
 @ajax_required
@@ -58,7 +71,8 @@ def image_like(request):
             else:
                 image.users_like.remove(request.user)
             return JsonResponse({'status': 'ok'})
-        except:
+        except Exception as e:
+            logger.exception(e)
             pass
     return JsonResponse({'status': 'ko'})
 
@@ -83,3 +97,17 @@ def image_list(request):
     return render(request,
                   'images/image/list.html',
                   {'section': 'images', 'images': images})
+
+
+@login_required
+def image_rank(request):
+    image_ranking = r.zrange('image_ranking', 0, -1, desc=True)[:10]
+    image_ranking_ids = [int(id) for id in image_ranking]
+    most_viewed = list(Image.objects.filter(id__in=image_ranking_ids))
+    most_viewed.sort(key=lambda x: image_ranking_ids.index(x.id))
+    return render(request,
+                  'images/image/ranking.html',
+                  {
+                      'section': 'images',
+                      'most_viewed': most_viewed
+                  })
